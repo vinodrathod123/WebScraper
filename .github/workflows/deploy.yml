@@ -2,8 +2,7 @@ name: Deploy to AWS EC2
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
   deploy:
@@ -13,18 +12,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH key
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          printf "%s\n" "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          printf "%s" "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
+          ssh-keyscan -H 16.170.248.187 >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@YOUR_EC2_PUBLIC_IP <<EOF
-          set -e
-          cd /home/ubuntu/WebScraper
+          ssh -i ~/.ssh/ec2.pem ubuntu@16.170.248.187 << 'EOF'
+            set -e
 
-          docker build -t webscraper-java .
-          docker run --rm webscraper-java
+            cd /home/ubuntu/webscraper || \
+            git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/webscraper
+
+            cd /home/ubuntu/webscraper
+            git pull origin main
+
+            docker build -t webscraper .
+            docker stop webscraper || true
+            docker rm webscraper || true
+
+            docker run -d --name webscraper --restart unless-stopped webscraper
           EOF
