@@ -15,24 +15,17 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          printf "%s" "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
-          ssh-keyscan -H 16.170.248.187 >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
         run: |
-          ssh -i ~/.ssh/ec2.pem ubuntu@16.170.248.187 << 'EOF'
-            set -e
-
-            cd /home/ubuntu/webscraper || \
-            git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/webscraper
-
-            cd /home/ubuntu/webscraper
-            git pull origin main
-
-            docker build -t webscraper .
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem \
+          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd WebScraper || exit 1
+            git pull
+            docker build -t webscraper-java .
             docker stop webscraper || true
             docker rm webscraper || true
-
-            docker run -d --name webscraper --restart unless-stopped webscraper
+            docker run -d --name webscraper webscraper-java
           EOF
