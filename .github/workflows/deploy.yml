@@ -9,23 +9,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2️⃣ Setup SSH key
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          printf "%s" "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem \
-          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd WebScraper || exit 1
-            git pull
-            docker build -t webscraper-java .
-            docker stop webscraper || true
-            docker rm webscraper || true
-            docker run -d --name webscraper webscraper-java
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@16.170.248.187 << 'EOF'
+            set -e
+          
+            # Navigate to project or clone if missing
+            if [ ! -d "/home/ubuntu/WebScraper" ]; then
+              git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
+            fi
+            cd /home/ubuntu/WebScraper
+          
+            echo "Updating code..."
+            git pull origin main
+          
+            echo "Building Docker image..."
+            docker build -t web scraper-java .
+          
+            echo "Restarting container..."
+            docker stop web scraper || true
+            docker rm web scraper || true
+          
+            # Running in detached mode (-d) so the action can finish
+            docker run -d --name web scraper web scraper-java
           EOF
