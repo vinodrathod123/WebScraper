@@ -2,42 +2,41 @@ name: Deploy to AWS EC2
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2️⃣ Setup SSH key (HEREDOC – correct way)
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          # Use echo instead of heredoc to ensure clean string writing
-          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          cat << 'EOF' > ~/.ssh/ec2.pem
+          ${{ secrets.EC2_KEY }}
+          EOF
           chmod 600 ~/.ssh/ec2.pem
-          # Verify the key starts with the correct header (won't show full key)
-          head -n 1 ~/.ssh/ec2.pem
 
+      # 3️⃣ Deploy to EC2
       - name: Deploy on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@13.51.56.116 << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@<EC2_PUBLIC_IP> << 'EOF'
             set -e
-            # Ensure the directory exists
-            if [ ! -d "/home/ubuntu/WebScraper" ]; then
-              git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
-            fi
-          
             cd /home/ubuntu/WebScraper
-            git pull origin main
-          
+
+            echo "Building Docker image..."
             docker build -t webscraper-java .
+
+            echo "Stopping old container (if any)..."
             docker stop webscraper || true
             docker rm webscraper || true
-          
-            # Note: Running with --rm will delete the container after it finishes.
-            # If this is a background service, use -d instead.
-            docker run --name webscraper webscraper-java
+
+            echo "Running scraper..."
+            docker run --rm webscraper-java
           EOF
