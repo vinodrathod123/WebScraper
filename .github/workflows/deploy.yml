@@ -9,25 +9,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup SSH key
+      # 2️⃣ Setup SSH key (CORRECT WAY)
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          cat << 'EOF' > ~/.ssh/ec2.pem
+          ${{ secrets.EC2_KEY }}
+          EOF
           chmod 600 ~/.ssh/ec2.pem
 
       # 3️⃣ Deploy to EC2
       - name: Deploy on EC2
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@13.51.56.116 << 'EOF'
-            cd WebScraper
-            git pull origin main
+            set -e
+            cd /home/ubuntu/WebScraper
             docker build -t webscraper-java .
             docker stop webscraper || true
             docker rm webscraper || true
-            docker run -d --name webscraper --restart unless-stopped webscraper-java
+            docker run --rm webscraper-java
           EOF
