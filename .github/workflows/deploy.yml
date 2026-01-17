@@ -22,6 +22,7 @@ jobs:
           ${{ secrets.EC2_KEY }}
           EOF
           chmod 600 ~/.ssh/ec2.pem
+      
 
       # 3️⃣ Deploy to EC2
       - name: Deploy on EC2
