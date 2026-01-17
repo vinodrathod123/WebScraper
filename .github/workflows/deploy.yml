@@ -14,13 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup SSH key (HEREDOC – correct way)
+      # 2️⃣ Setup SSH key (The most reliable way)
       - name: Setup SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_KEY }}
         run: |
           mkdir -p ~/.ssh
-          cat << 'EOF' > ~/.ssh/ec2.pem
-          ${{ secrets.EC2_KEY }}
-          EOF
+          echo "$EC2_SSH_KEY" > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
       
 
