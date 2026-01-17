@@ -30,8 +30,8 @@ jobs:
             fi
             cd /home/ubuntu/WebScraper
             git pull origin main
-            docker build -t webscraper-java .
-            docker stop webscraper || true
-            docker rm webscraper || true
-            docker run -d --name webscraper webscraper-java
+            docker build -t web-scraper-java .
+            docker stop web-scraper || true
+            docker rm web-scraper || true
+            docker run -d --name web-scraper web-scraper-java
           EOF
