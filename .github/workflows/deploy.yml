@@ -14,33 +14,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup SSH key (Fixed Indentation Issue)
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          # Use printf to avoid any trailing newline issues from the shell
+          printf "%s" "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
 
-      # 3️⃣ Deploy to EC2
       - name: Deploy on EC2
         run: |
+          # Use -vvv to see exactly why the key is being rejected if it fails again
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@16.170.248.187 << 'EOF'
             set -e
-            # Ensure directory exists before CDing
-            if [ ! -d "/home/ubuntu/WebScraper" ]; then
-              git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
-            fi
-          
-            cd /home/ubuntu/WebScraper
+            cd /home/ubuntu/WebScraper || (git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper && cd /home/ubuntu/WebScraper)
             git pull origin main
-
-            echo "Building Docker image..."
             docker build -t webscraper-java .
-
-            echo "Stopping old container..."
             docker stop webscraper || true
             docker rm webscraper || true
-
-            echo "Running scraper..."
-            docker run --name webscraper webscraper-java
+            docker run -d --name webscraper webscraper-java
           EOF
