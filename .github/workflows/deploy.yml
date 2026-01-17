@@ -16,22 +16,31 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          # Decodes the Base64 secret into a perfect PEM file
+          # This decodes your Base64 secret back into a perfect PEM file
           echo "${{ secrets.EC2_KEY_BASE64 }}" | base64 -d > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
+          # Keyscan prevents host verification errors
           ssh-keyscan -H 16.170.248.187 >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
         run: |
           ssh -i ~/.ssh/ec2.pem ubuntu@16.170.248.187 << 'EOF'
             set -e
+          
+            # Setup directory
             if [ ! -d "/home/ubuntu/WebScraper" ]; then
               git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
             fi
             cd /home/ubuntu/WebScraper
+          
+            echo "Pulling updates..."
             git pull origin main
+          
+            echo "Building and restarting Docker..."
             docker build -t web-scraper-java .
             docker stop web-scraper || true
             docker rm web-scraper || true
+          
+            # -d runs it in background so GitHub can finish the job
             docker run -d --name web-scraper web-scraper-java
           EOF
