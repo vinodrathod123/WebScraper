@@ -27,8 +27,8 @@ jobs:
       # 3️⃣ Deploy to EC2
       - name: Deploy on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@<NEW_PUBLIC_IP>
-           
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@ip-172-31-45-228 PUBLIC IP
+            set -e
             cd /home/ubuntu/WebScraper
 
             echo "Building Docker image..."
