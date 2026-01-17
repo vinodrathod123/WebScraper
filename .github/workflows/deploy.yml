@@ -27,7 +27,7 @@ jobs:
       # 3️⃣ Deploy to EC2
       - name: Deploy on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@<NEW_PUBLIC_IP> <<EOF
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem ubuntu@<NEW_PUBLIC_IP> EOF
             set -e
             cd /home/ubuntu/WebScraper
 
