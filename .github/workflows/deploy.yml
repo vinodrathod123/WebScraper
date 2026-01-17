@@ -10,43 +10,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup SSH key
-      # We use printf to ensure the secret is written exactly as stored in GitHub
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          printf "%s" "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          # Decodes the Base64 secret into a perfect PEM file
+          echo "${{ secrets.EC2_KEY_BASE64 }}" | base64 -d > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
-          # Adding the IP address here fixes the 'usage: ssh-keyscan' error
           ssh-keyscan -H 16.170.248.187 >> ~/.ssh/known_hosts
 
-      # 3️⃣ Deploy to EC2
       - name: Deploy on EC2
         run: |
-          # We use the key to connect and run a script block on the server
           ssh -i ~/.ssh/ec2.pem ubuntu@16.170.248.187 << 'EOF'
             set -e
-          
-            # Navigate to project or clone if missing
             if [ ! -d "/home/ubuntu/WebScraper" ]; then
               git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
             fi
             cd /home/ubuntu/WebScraper
-          
-            echo "Updating code from GitHub..."
             git pull origin main
-          
-            echo "Building Docker image..."
             docker build -t webscraper-java .
-          
-            echo "Restarting container..."
             docker stop webscraper || true
             docker rm webscraper || true
-          
-            # -d runs it in the background so the GitHub Action can finish
             docker run -d --name webscraper webscraper-java
           EOF
