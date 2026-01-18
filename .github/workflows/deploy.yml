@@ -16,33 +16,38 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          # Use printf to avoid echo interpreting backslashes or trimming
+          # Decode private key stored as base64 secret
           printf '%s' "${{ secrets.EC2_KEY_BASE64 }}" | base64 --decode > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
-          # Remove CRLF if the file somehow contains Windows line endings
           sed -i 's/\r$//' ~/.ssh/ec2.pem
-          # Add host to known_hosts
           ssh-keyscan -H 16.170.248.187 >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
+        env:
+          REMOTE_HOST: 16.170.248.187
+          REMOTE_USER: ubuntu
         run: |
-          ssh -i ~/.ssh/ec2.pem ubuntu@16.170.248.187 << 'EOF'
-            set -e
-          
-            # Setup directory
+          ssh -i ~/.ssh/ec2.pem $REMOTE_USER@$REMOTE_HOST << 'EOF'
+            set -euo pipefail
+
+            # Ensure repository exists (shallow clone for speed)
             if [ ! -d "/home/ubuntu/WebScraper" ]; then
-              git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
+              git clone --depth 1 https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
             fi
             cd /home/ubuntu/WebScraper
-          
-            echo "Pulling updates..."
-            git pull origin main
-          
-            echo "Building and restarting Docker..."
-            docker build -t web-scraper-java .
-            docker stop web-scraper || true
-            docker rm web-scraper || true
-          
-            # -d runs it in background so GitHub can finish the job
-            docker run -d --name web-scraper web-scraper-java
+
+            echo "Updating repository to origin/main (hard reset to avoid merges)..."
+            git fetch --depth 1 origin main
+            git reset --hard origin/main
+
+            echo "Building Docker image..."
+            sudo docker build -t web-scraper-java .
+
+            echo "Stopping and removing existing container if present..."
+            sudo docker stop web-scraper || true
+            sudo docker rm web-scraper || true
+
+            echo "Starting container (adjust ports/env as needed)..."
+            # Example: add -p 8080:8080 and any -e ENV=val you need
+            sudo docker run -d --restart unless-stopped --name web-scraper web-scraper-java
           EOF
