@@ -16,10 +16,12 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          # This decodes your Base64 secret back into a perfect PEM file
-          echo "${{ secrets.EC2_KEY_BASE64 }}" | base64 -d > ~/.ssh/ec2.pem
+          # Use printf to avoid echo interpreting backslashes or trimming
+          printf '%s' "${{ secrets.EC2_KEY_BASE64 }}" | base64 --decode > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
-          # Keyscan prevents host verification errors
+          # Remove CRLF if the file somehow contains Windows line endings
+          sed -i 's/\r$//' ~/.ssh/ec2.pem
+          # Add host to known_hosts
           ssh-keyscan -H 16.170.248.187 >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
