@@ -2,52 +2,53 @@ name: Deploy to AWS EC2
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup SSH
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          # Decode private key stored as base64 secret
-          printf '%s' "${{ secrets.EC2_KEY_BASE64 }}" | base64 --decode > ~/.ssh/ec2.pem
-          chmod 400 ~/.ssh/ec2.pem
-          sed -i 's/\r$//' ~/.ssh/ec2.pem
-          ssh-keyscan -H 16.170.248.187 >> ~/.ssh/known_hosts
+          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          chmod 600 ~/.ssh/ec2.pem
 
       - name: Deploy on EC2
         env:
-          REMOTE_HOST: 16.170.248.187
-          REMOTE_USER: ubuntu
+          REMOTE_HOST: ${{ secrets.EC2_HOST }}
+          REMOTE_USER: ${{ secrets.EC2_USER }}
         run: |
-          ssh -i ~/.ssh/ec2.pem $REMOTE_USER@$REMOTE_HOST << 'EOF'
-            set -euo pipefail
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem $REMOTE_USER@$REMOTE_HOST << EOF
+            set -e
 
-            # Ensure repository exists (shallow clone for speed)
-            if [ ! -d "/home/ubuntu/WebScraper" ]; then
-              git clone --depth 1 https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
+            # Install Docker if not present
+            if ! command -v docker >/dev/null 2>&1; then
+              sudo apt update -y
+              sudo apt install docker.io -y
+              sudo systemctl start docker
+              sudo systemctl enable docker
             fi
-            cd /home/ubuntu/WebScraper
 
-            echo "Updating repository to origin/main (hard reset to avoid merges)..."
-            git fetch --depth 1 origin main
-            git reset --hard origin/main
+            # Clone repo if missing
+            if [ ! -d "/home/ubuntu/WebScraper" ]; then
+              git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
+            fi
+
+            cd /home/ubuntu/WebScraper
+            git pull origin main
 
             echo "Building Docker image..."
-            sudo docker build -t web-scraper-java .
+            sudo docker build -t webscraper-java .
 
-            echo "Stopping and removing existing container if present..."
-            sudo docker stop web-scraper || true
-            sudo docker rm web-scraper || true
+            echo "Stopping old container..."
+            sudo docker stop webscraper || true
+            sudo docker rm webscraper || true
 
-            echo "Starting container (adjust ports/env as needed)..."
-            # Example: add -p 8080:8080 and any -e ENV=val you need
-            sudo docker run -d --restart unless-stopped --name web-scraper web-scraper-java
+            echo "Running new container..."
+            sudo docker run -d --restart unless-stopped --name webscraper webscraper-java
           EOF
