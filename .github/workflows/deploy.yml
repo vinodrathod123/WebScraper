@@ -9,47 +9,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH key
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
-          chmod 400 ~/.ssh/ec2.pem
+          chmod 600 ~/.ssh/ec2.pem
 
       - name: Deploy on EC2
         env:
-          REMOTE_HOST: 100.53.17.203
           REMOTE_USER: ubuntu
-
+          REMOTE_HOST: 100.53.17.203
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem $REMOTE_USER@$REMOTE_HOST << EOF
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem $REMOTE_USER@$REMOTE_HOST << 'EOF'
             set -e
 
-            # Install Docker if not present
-            if ! command -v docker >/dev/null 2>&1; then
-              sudo apt update -y
-              sudo apt install docker.io -y
-              sudo systemctl start docker
-              sudo systemctl enable docker
+            if [ ! -d "$HOME/WebScraper" ]; then
+              git clone https://github.com/vinodrathod123/WebScraper.git
             fi
 
-            # Clone repo if missing
-            if [ ! -d "/home/ubuntu/WebScraper" ]; then
-              git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
-            fi
-
-            cd /home/ubuntu/WebScraper
+            cd WebScraper
             git pull origin main
 
-            echo "Building Docker image..."
-            sudo docker build -t webscraper-java .
+            docker build -t webscraper .
+            docker stop webscraper || true
+            docker rm webscraper || true
 
-            echo "Stopping old container..."
-            sudo docker stop webscraper || true
-            sudo docker rm webscraper || true
-
-            echo "Running new container..."
-            sudo docker run -d --restart unless-stopped --name webscraper webscraper-java
+            docker run -d --restart unless-stopped --name webscraper webscraper
           EOF
