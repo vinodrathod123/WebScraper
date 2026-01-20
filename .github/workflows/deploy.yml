@@ -18,7 +18,7 @@ jobs:
           mkdir -p ~/.ssh
           # Decode private key stored as base64 secret
           printf '%s' "${{ secrets.EC2_KEY_BASE64 }}" | base64 --decode > ~/.ssh/ec2.pem
-          chmod 600 ~/.ssh/ec2.pem
+          chmod 400 ~/.ssh/ec2.pem
           sed -i 's/\r$//' ~/.ssh/ec2.pem
           ssh-keyscan -H 16.170.248.187 >> ~/.ssh/known_hosts
 
