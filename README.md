@@ -25,6 +25,24 @@ A production-ready **Java web scraping application** that fetches live news head
 - **Cloud:** AWS EC2 (Ubuntu Linux)
 
 ---
+# ⚙️ Directory
+
+├── Dockerfile
+├── README.md
+├── pom.xml
+├── src/
+│   └── main/
+│       └── java/
+│           └── student/
+│               └── com/
+│                   └── WebScraper.java
+└── target/
+└── WebScraper-1.0-SNAPSHOT.jar
+
+
+
+---
+
 ## ⚙️ How It Works
 
 1. Developer pushes code to GitHub
@@ -40,7 +58,7 @@ A production-ready **Java web scraping application** that fetches live news head
 
 ```bash
 mvn clean compile
-mvn exec:java -Dexec.mainClass="student.com.WebScraper"
+mvn exec:java -Dexec.mainClass=student.com.WebScraper
 🐳 Run with Docker (Local or EC2)
 bash
 Copy code
@@ -67,45 +85,56 @@ Automated build and deployment on every push
 Uses SSH-based deployment to EC2
 
 Ensures consistent and reliable delivery
-
+---
+## ▶️ Run Locally  (With Docker)
+docker pull bigot1006/webscraper:latest
+docker run -d --restart unless-stopped --name webscraper bigot1006/webscraper
 
 ## 🏗️ Deployment Architecture
 
-┌──────────────────────┐
-│  Developer Laptop    │
-│  (Git Push)          │
-└─────────┬────────────┘
-│
-▼
-┌──────────────────────┐
-│  GitHub Repository   │
-│  (Source Code)       │
-└─────────┬────────────┘
-│
-▼
-┌────────────────────────────────────┐
-│  GitHub Actions (CI/CD Pipeline)   │
-│  - Checkout code                  │
-│  - Build Docker image             │
-│  - SSH into EC2                   │
-│  - Deploy container               │
-└─────────┬─────────────────────────┘
-│
-▼
-┌────────────────────────────────────┐
-│  AWS EC2 (Ubuntu Server)           │
-│  - Docker installed               │
-│  - Image build / pull             │
-│  - Container execution            │
-└─────────┬─────────────────────────┘
-│
-▼
-┌────────────────────────────────────┐
-│  Java Web Scraper Container        │
-│  - Java + Maven                   │
-│  - Jsoup                          │
-│  - Fetches News Headlines         │
-└────────────────────────────────────┘
+┌────────────────────────┐
+│  Developer Machine     │
+│  (Code Changes)        │
+└───────────┬────────────┘
+            │  git push
+            ▼
+┌────────────────────────┐
+│  GitHub Repository     │
+│  (Source Code)         │
+└───────────┬────────────┘
+            │
+            ▼
+┌────────────────────────────────┐
+│  GitHub Actions – CI (ci.yml)  │
+│  • Checkout code               │
+│  • Maven build & compile       │
+│  • Verify code quality         │
+└───────────┬────────────────────┘
+            │ (on success)
+            ▼
+┌──────────────────────────────────────┐
+│  GitHub Actions – CD (deploy.yml)    │
+│  • SSH into EC2                      │
+│  • Build Docker image               │
+│  • Stop old container               │
+│  • Run new container                │
+└───────────┬──────────────────────────┘
+            │
+            ▼
+┌────────────────────────────────┐
+│  AWS EC2 (Ubuntu Linux VM)     │
+│  • Docker Engine               │
+│  • Application Host            │
+└───────────┬────────────────────┘
+            │
+            ▼
+┌────────────────────────────────┐
+│  Docker Container              │
+│  • Java Application            │
+│  • Jsoup Web Scraper           │
+│  • Running Continuously        │
+└────────────────────────────────┘
+
 
 👤 Author
 Vinod Rathod

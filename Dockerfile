@@ -1,14 +1,13 @@
-FROM maven:3.9.9-eclipse-temurin-17
-
+# ---------- Build stage ----------
+FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /app
-
-# Copy pom and download deps
 COPY pom.xml .
 RUN mvn dependency:go-offline
-
-# Copy source and build
 COPY src ./src
-RUN mvn clean compile
+RUN mvn clean package -DskipTests
 
-# Run directly from compiled classes
-CMD ["java", "-cp", "target/classes:/root/.m2/repository/org/jsoup/jsoup/1.22.1/jsoup-1.22.1.jar", "student.com.WebScraper"]
+# ---------- Runtime stage ----------
+FROM eclipse-temurin:17-jdk-alpine
+WORKDIR /app
+COPY --from=build /app/target/WebScraper-1.0-SNAPSHOT.jar app.jar
+CMD ["java", "-jar", "app.jar"]
