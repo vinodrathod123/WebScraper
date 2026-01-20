@@ -15,7 +15,7 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
+          printf "%s\n" "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2.pem
           chmod 600 ~/.ssh/ec2.pem
 
       - name: Deploy on EC2
@@ -25,17 +25,13 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2.pem $REMOTE_USER@$REMOTE_HOST << 'EOF'
             set -e
-
-            if [ ! -d "$HOME/WebScraper" ]; then
-              git clone https://github.com/vinodrathod123/WebScraper.git
+            if [ ! -d "/home/ubuntu/WebScraper" ]; then
+              git clone https://github.com/vinodrathod123/WebScraper.git /home/ubuntu/WebScraper
             fi
-
-            cd WebScraper
+            cd /home/ubuntu/WebScraper
             git pull origin main
-
-            docker build -t webscraper .
+            docker build -t webscraper-java .
             docker stop webscraper || true
             docker rm webscraper || true
-
-            docker run -d --restart unless-stopped --name webscraper webscraper
+            docker run -d --restart unless-stopped --name webscraper webscraper-java
           EOF
